@@ -1,4 +1,6 @@
-# Pruebas E2E con Selenium, Postman y Newman - Spring Boot
+# Suite de Pruebas con JUnit 5, Mockito y JaCoCo - Spring Boot
+
+---
 
 ## Autor
 
@@ -6,72 +8,71 @@
 - **Código:** 02230131027
 - **Programa:** Ingeniería de Sistemas
 - **Unidad:** 10 - Pruebas de Software en Aplicaciones Web
-- **Actividad:** Post-Contenido 2
-- **Fecha:** 10/05/2026
+- **Actividad:** Post-Contenido 1
+- **Fecha:** 2026
 
 ---
 
 ## Descripción del Proyecto
 
-Este proyecto extiende el Post-Contenido 1 de la Unidad 10 implementando pruebas de extremo a extremo (E2E) y pruebas automatizadas de API para una aplicación ToDo desarrollada con Spring Boot.
+Este proyecto consiste en la implementación de una suite de pruebas automatizadas sobre una aplicación Spring Boot para gestión de tareas.
 
-Se implementaron pruebas automatizadas con Selenium WebDriver utilizando el patrón Page Object Model (POM), una colección de pruebas REST en Postman y automatización continua mediante Newman ejecutado desde GitHub Actions.
+Se desarrollaron pruebas unitarias utilizando JUnit 5 y Mockito, pruebas de integración para controladores y repositorios usando `@WebMvcTest` y `@DataJpaTest`, además de medición de cobertura de código con JaCoCo.
+
+El objetivo principal fue validar el correcto funcionamiento de las diferentes capas de la aplicación y garantizar una cobertura mínima del 70 % en las pruebas.
 
 ---
 
-## Funcionalidades Implementadas
+## Objetivo de la Actividad
 
-- Pruebas E2E con Selenium WebDriver.
-- Implementación del patrón Page Object Model (POM).
-- Ejecución de Chrome en modo headless.
-- Colección Postman con pruebas REST automatizadas.
-- Variables dinámicas usando `pm.collectionVariables`.
-- Automatización de pruebas API con Newman.
-- Pipeline CI/CD con GitHub Actions.
-- Workflow automático ejecutando pruebas Newman en cada push.
+Implementar pruebas automatizadas en una aplicación Spring Boot aplicando:
+
+- JUnit 5 para pruebas unitarias.
+- Mockito para simulación de dependencias.
+- `@WebMvcTest` para pruebas de controladores.
+- `@DataJpaTest` para pruebas de repositorios.
+- JaCoCo para medir y verificar cobertura de código.
 
 ---
 
 ## Tecnologías Utilizadas
 
-- **Spring Boot 3.x** — Framework principal.
+- **Spring Boot 3.2.x** — Framework principal.
 - **Java 17** — Lenguaje de programación.
-- **Maven 3.x** — Gestión de dependencias.
-- **JUnit 5** — Framework de pruebas.
-- **Selenium WebDriver 4.18.1** — Automatización E2E.
-- **WebDriverManager 5.8.0** — Gestión automática de drivers.
-- **Google Chrome** — Navegador utilizado para pruebas.
-- **Postman v10+** — Pruebas de API REST.
-- **Newman** — Runner CLI para Postman.
-- **GitHub Actions** — Integración continua.
-- **Node.js 18+** — Ejecución de Newman.
+- **Maven 3.9.x** — Gestión de dependencias.
+- **JUnit 5** — Framework de pruebas unitarias.
+- **Mockito** — Simulación de dependencias.
+- **AssertJ** — Validaciones en pruebas.
+- **H2 Database** — Base de datos en memoria.
+- **JaCoCo 0.8.11** — Cobertura de código.
+- **Spring Data JPA** — Persistencia de datos.
+- **Spring Web** — Desarrollo de API REST.
 
 ---
 
 ## Estructura del Proyecto
 
 ```text
-rozo-post2-u10/
+rozo-post1-u10/
 │
 ├── src/
 │   ├── main/
-│   │   ├── java/com/universidad/tareas_testing/
+│   │   ├── java/com/universidad/tareas/
+│   │   │   ├── controller/
+│   │   │   ├── service/
+│   │   │   ├── repository/
+│   │   │   └── entity/
+│   │   │
 │   │   └── resources/
 │   │
 │   └── test/
-│       └── java/com/universidad/tareas_testing/e2e/
-│           ├── TareasPage.java
-│           ├── NuevaTareaPage.java
-│           └── TareasE2ETest.java
-│
-├── postman/
-│   ├── ColeccionToDo.json
-│   ├── env-local.json
-│   └── env-ci.json
-│
-├── .github/
-│   └── workflows/
-│       └── api-tests.yml
+│       └── java/com/universidad/tareas/
+│           ├── service/
+│           │   └── TareaServiceTest.java
+│           ├── controller/
+│           │   └── TareaControllerTest.java
+│           └── repository/
+│               └── TareaRepositoryTest.java
 │
 ├── evidencias/
 │
@@ -81,102 +82,148 @@ rozo-post2-u10/
 
 ---
 
-# CHECKPOINT 1 - Selenium + Page Object Model
+# Paso 1 - Entidad y Repositorio
 
 ---
 
-## Implementación del Patrón POM
-
-Se creó el siguiente paquete:
-
-```text
-src/test/java/com/universidad/tareas_testing/e2e
-```
-
-Con las siguientes clases:
-
-- `TareasPage`
-- `NuevaTareaPage`
-- `TareasE2ETest`
-
----
-
-## Clase `TareasPage`
+## Entidad `Tarea`
 
 ```java
-public class TareasPage {
+@Entity
+public class Tarea {
 
-    private final WebDriver driver;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    private final By btnNueva = By.id("btn-nueva");
-    private final By listItems = By.cssSelector(".tarea-item");
+    @NotBlank
+    private String titulo;
 
-    public TareasPage(WebDriver driver) {
-        this.driver = driver;
+    private String descripcion;
+
+    private boolean completada = false;
+
+    @CreationTimestamp
+    private LocalDateTime fechaCreacion;
+
+    // getters y setters
+}
+```
+
+---
+
+## Repositorio `TareaRepository`
+
+```java
+public interface TareaRepository extends JpaRepository<Tarea, Long> {
+
+    List<Tarea> findByCompletada(boolean completada);
+}
+```
+
+---
+
+# Paso 2 - Servicio `TareaService`
+
+---
+
+## Clase `TareaService`
+
+```java
+@Service
+public class TareaService {
+
+    private final TareaRepository repo;
+
+    public TareaService(TareaRepository repo) {
+        this.repo = repo;
     }
 
-    public int contarTareas() {
-        return driver.findElements(listItems).size();
+    public Tarea crear(Tarea tarea) {
+
+        if (tarea.getTitulo() == null || tarea.getTitulo().isBlank()) {
+            throw new IllegalArgumentException("El título no puede estar vacío");
+        }
+
+        return repo.save(tarea);
     }
 
-    public NuevaTareaPage irANuevaTarea() {
-        driver.findElement(btnNueva).click();
-        return new NuevaTareaPage(driver);
+    public Tarea buscarPorId(Long id) {
+
+        return repo.findById(id)
+            .orElseThrow(() ->
+                new EntityNotFoundException("Tarea no encontrada: " + id));
+    }
+
+    public Tarea completar(Long id) {
+
+        Tarea t = buscarPorId(id);
+
+        t.setCompletada(true);
+
+        return repo.save(t);
     }
 }
 ```
 
 ---
 
-## Clase de Pruebas Selenium
+# CHECKPOINT 1 - Pruebas Unitarias con Mockito
+
+---
+
+## Clase `TareaServiceTest`
 
 ```java
-@SpringBootTest(webEnvironment = WebEnvironment.DEFINED_PORT)
-class TareasE2ETest {
+@ExtendWith(MockitoExtension.class)
+class TareaServiceTest {
 
-    private WebDriver driver;
+    @Mock
+    TareaRepository repo;
 
-    @BeforeEach
-    void setUp() {
+    @InjectMocks
+    TareaService service;
 
-        WebDriverManager.chromedriver().setup();
+    @Test
+    void crear_conTituloValido_guardaYRetorna() {
 
-        ChromeOptions opts = new ChromeOptions();
-        opts.addArguments("--headless", "--no-sandbox");
+        Tarea t = new Tarea();
+        t.setTitulo("Estudiar JUnit");
 
-        driver = new ChromeDriver(opts);
+        when(repo.save(any())).thenReturn(t);
 
-        driver.get("http://localhost:8080/tareas");
+        assertThat(service.crear(t).getTitulo())
+            .isEqualTo("Estudiar JUnit");
+
+        verify(repo).save(t);
     }
 
     @Test
-    void paginaTareas_cargaCorrectamente() {
-        assertThat(driver.getTitle()).contains("Tareas");
+    void crear_conTituloVacio_lanzaIllegalArgumentException() {
+
+        Tarea t = new Tarea();
+        t.setTitulo(" ");
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> service.crear(t)
+        );
+
+        verify(repo, never()).save(any());
     }
 
-    @AfterEach
-    void tearDown() {
-        if (driver != null) {
-            driver.quit();
-        }
+    @Test
+    void buscarPorId_noExiste_lanzaEntityNotFoundException() {
+
+        when(repo.findById(99L))
+            .thenReturn(Optional.empty());
+
+        assertThrows(
+            EntityNotFoundException.class,
+            () -> service.buscarPorId(99L)
+        );
     }
 }
-```
-
----
-
-## Ejecutar Pruebas Selenium
-
-Abrir PowerShell en la carpeta del proyecto:
-
-```powershell
-cd C:\Users\Public\Dev\rozo-post2-u10
-```
-
-Ejecutar:
-
-```powershell
-.\mvnw.cmd test -Dtest=TareasE2ETest
 ```
 
 ---
@@ -185,196 +232,257 @@ Ejecutar:
 
 ```text
 BUILD SUCCESS
-Tests run: 2
+Tests run: 3
 Failures: 0
 Errors: 0
 ```
 
 ---
 
-# CHECKPOINT 2 - Postman + Test Scripts
+## Validación Realizada
 
----
+Se verificó correctamente que:
 
-## Crear Entorno en Postman
-
-### Nombre del entorno
-
-```text
-ToDoApp-Local
+```java
+verify(repo, never()).save(any());
 ```
 
-### Variable
-
-```text
-baseUrl = http://localhost:8080
-```
+Confirma que el repositorio no es invocado cuando el título está vacío.
 
 ---
 
-## Colección Postman
-
-### Nombre
-
-```text
-API ToDoApp
-```
+# CHECKPOINT 2 - Pruebas de Integración
 
 ---
 
-## Requests Implementados
+## Clase `TareaControllerTest`
 
-- POST crear tarea
-- GET obtener tarea
-- PATCH completar tarea
-- GET verificar completada
-- GET tarea inexistente (404)
+```java
+@WebMvcTest(TareaController.class)
+class TareaControllerTest {
 
----
+    @Autowired
+    MockMvc mockMvc;
 
-## Test Script - POST Crear Tarea
+    @MockBean
+    TareaService service;
 
-```javascript
-pm.test("Status 201 Created", () => {
-  pm.response.to.have.status(201);
-});
+    @Test
+    void get_tareaExiste_retorna200() throws Exception {
 
-pm.test("Respuesta contiene id numerico", () => {
-  const b = pm.response.json();
+        Tarea t = new Tarea();
 
-  pm.expect(b).to.have.property("id");
+        t.setId(1L);
+        t.setTitulo("Test");
 
-  pm.collectionVariables.set("tareaId", b.id);
-});
+        when(service.buscarPorId(1L)).thenReturn(t);
 
-pm.test("Tiempo de respuesta < 500ms", () => {
-  pm.expect(pm.response.responseTime).to.be.below(500);
-});
+        mockMvc.perform(get("/api/tareas/1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.titulo").value("Test"));
+    }
+
+    @Test
+    void get_noExiste_retorna404() throws Exception {
+
+        when(service.buscarPorId(99L))
+            .thenThrow(new EntityNotFoundException("no encontrada"));
+
+        mockMvc.perform(get("/api/tareas/99"))
+            .andExpect(status().isNotFound());
+    }
+}
 ```
 
 ---
 
-## Ejecutar Aplicación Spring Boot
+## Clase `TareaRepositoryTest`
+
+```java
+@DataJpaTest
+class TareaRepositoryTest {
+
+    @Autowired
+    TareaRepository repo;
+
+    @Autowired
+    TestEntityManager em;
+
+    @BeforeEach
+    void setUp() {
+
+        Tarea t = new Tarea();
+
+        t.setTitulo("Pendiente");
+        t.setCompletada(false);
+
+        em.persistAndFlush(t);
+    }
+
+    @Test
+    void findByCompletada_false_retornaUnaTarea() {
+
+        assertThat(repo.findByCompletada(false))
+            .hasSize(1)
+            .extracting("titulo")
+            .containsExactly("Pendiente");
+    }
+}
+```
+
+---
+
+## Resultado del Checkpoint 2
+
+- `TareaControllerTest` ejecuta correctamente las pruebas de la capa web.
+- El test de tarea inexistente retorna correctamente un estado HTTP 404.
+- `@DataJpaTest` utiliza H2 en memoria.
+- Los datos de prueba se revierten automáticamente entre ejecuciones.
+
+---
+
+# CHECKPOINT 3 - Cobertura con JaCoCo
+
+---
+
+## Configuración JaCoCo en `pom.xml`
+
+```xml
+<plugin>
+    <groupId>org.jacoco</groupId>
+    <artifactId>jacoco-maven-plugin</artifactId>
+    <version>0.8.11</version>
+
+    <executions>
+
+        <execution>
+            <id>prepare-agent</id>
+
+            <goals>
+                <goal>prepare-agent</goal>
+            </goals>
+        </execution>
+
+        <execution>
+            <id>report</id>
+            <phase>test</phase>
+
+            <goals>
+                <goal>report</goal>
+            </goals>
+        </execution>
+
+        <execution>
+            <id>check</id>
+
+            <goals>
+                <goal>check</goal>
+            </goals>
+
+            <configuration>
+
+                <excludes>
+                    <exclude>**/*Application.class</exclude>
+                    <exclude>**/entity/**</exclude>
+                </excludes>
+
+                <rules>
+                    <rule>
+                        <element>BUNDLE</element>
+
+                        <limits>
+                            <limit>
+                                <counter>LINE</counter>
+                                <value>COVEREDRATIO</value>
+                                <minimum>0.70</minimum>
+                            </limit>
+                        </limits>
+
+                    </rule>
+                </rules>
+
+            </configuration>
+        </execution>
+
+    </executions>
+</plugin>
+```
+
+---
+
+## Ejecutar JaCoCo
 
 ```powershell
-.\mvnw.cmd spring-boot:run
+mvn clean test
 ```
-
-Esperar el mensaje:
-
-```text
-Started Application
-```
-
----
-
-## Ejecutar Runner de Postman
-
-1. Abrir la colección **API ToDoApp**.
-2. Hacer clic en **Run Collection**.
-3. Seleccionar el entorno **ToDoApp-Local**.
-4. Ejecutar **Start Run**.
 
 ---
 
 ## Resultado Esperado
 
 ```text
-0 failures
-5 requests ejecutados correctamente
+BUILD SUCCESS
+Coverage >= 70%
 ```
 
 ---
 
-# CHECKPOINT 3 - Newman + GitHub Actions
+## Reporte Generado
 
----
-
-## Instalación de Newman
-
-Instalar Node.js 18+ y luego ejecutar:
-
-```powershell
-npm install -g newman
-```
-
-Verificar instalación:
-
-```powershell
-newman -v
-```
-
----
-
-## Ejecutar Newman Localmente
-
-Desde la carpeta del proyecto ejecutar:
-
-```powershell
-newman run postman/ColeccionToDo.json --environment postman/env-local.json
-```
-
----
-
-## Resultado Esperado
+El reporte HTML se genera en:
 
 ```text
-5 requests
-0 failures
+target/site/jacoco/index.html
 ```
 
----
+En el reporte:
 
-## Workflow GitHub Actions
-
-Archivo utilizado:
-
-```text
-.github/workflows/api-tests.yml
-```
+- Las líneas verdes representan código cubierto.
+- Las líneas rojas representan código no cubierto.
+- Las líneas amarillas representan cobertura parcial.
 
 ---
 
-# Instrucciones Generales de Ejecución
+# Instrucciones de Ejecución
 
 ---
 
-## 1. Ejecutar Aplicación
+## 1. Ejecutar Todas las Pruebas
 
 ```powershell
-cd C:\Users\Public\Dev\rozo-post2-u10
-
-.\mvnw.cmd spring-boot:run
+mvn test
 ```
 
 ---
 
-## 2. Ejecutar Pruebas Selenium
+## 2. Ejecutar Solo las Pruebas del Servicio
 
 ```powershell
-.\mvnw.cmd test -Dtest=TareasE2ETest
+mvn test -Dtest=TareaServiceTest
 ```
 
 ---
 
-## 3. Ejecutar Newman
+## 3. Generar Reporte JaCoCo
 
 ```powershell
-newman run postman/ColeccionToDo.json --environment postman/env-local.json
+mvn clean test jacoco:check
 ```
+
+---
 
 ## Capturas del Proyecto
 
 Las siguientes capturas se encuentran en la carpeta `/evidencias/`:
 
-# Test E2E pasados
+# Pruebas unitarias 3 test pasan en verde
 
-![testE2E](evidencias/captura_testE2E.png)
+![service_test](evidencias/captura_service_test.png)
 
-## 5 test pasados con postman
+## Test de pruebas de integración y 404
 
-![postman_test](evidencias/captura_postman_test_success.png)
+![test_h2](evidencias/captura_test_h2_404.png)
 
-## Test comprobado en Actions del repositorio
+## Reporte de cobertura con jacoco
 
-![actions](evidencias/captura_actions_passing.png)
+![cobertura](evidencias/tabla_de_cobertura.png)
